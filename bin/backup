@@ -1,0 +1,77 @@
+#!/bin/sh
+
+. /opt/root/lib/import/import.sh
+. /opt/root/lib/log/log.sh
+. /opt/root/lib/format/format.sh
+. /opt/root/lib/send/send.sh
+
+main() {
+    local MSG main_result=0
+
+    import \
+        -l /opt/root/lib/backup \
+        -f /opt/root/etc/backup/backup.conf
+
+    mkdir -p "$LOG_DIR" || {
+        log -e "Failed to create log directory: $LOG_DIR" >&2
+        log -i "Backup CANCELLED!"
+        return 1
+    }
+
+    LOG_FILE="$LOG_DIR/backup_$(date '+%Y%m%d_%H%M%S').log"
+
+    MSG="$(
+        format -b "Host: $(
+            hostname
+        )"
+    )"
+        
+    log -i "Starting entware backup..."
+
+    log -i "[1/4] Checking disk..."
+    if ! disk_checkup; then
+        log -e "Backup CANCELLED!"
+        MSG="$MSG$(
+            format -b "Backup CANCELLED!"
+        )"
+        send -t "$MSG"
+        return 1
+    fi
+
+    log -i "[2/4] Backing up..."
+    if ! restic_backup; then
+        main_result=1
+    fi
+
+    log -i "[3/4] Pruning old snapshots..."
+    if [ "$main_result" -eq 0 ]; then
+        if ! cleanup; then
+            log -w "Make sure there is enough disk space and consider rerunning cleanup."
+        fi
+    else
+        log -w "Backup failed. Skipping..." 
+    fi
+
+    log -i "[4/4] Checking files integrity..."
+    if ! integrity_check; then
+        log -w "Integrity of some repos may be compromised. Consider manual checkup."
+    fi
+    
+    if [ "$main_result" -eq 0 ]; then
+        log -i "Backup completed successfully."
+        MSG="$MSG$(
+            format -b "Backup completed successfully."
+        )"
+        send -t "$MSG"
+        return 0
+    else
+        log -e "Backup FAILED!"
+        MSG="$MSG$(
+            format -b "Backup FAILED!"
+        )"
+        send -t "$MSG"
+        return 1
+    fi
+}
+
+main "$@"

@@ -1,0 +1,14 @@
+# Restic config file
+# OPTIONAL:
+# MUST:
+
+# Cleanup config
+KEEP_DAILY=
+KEEP_WEEKLY=
+KEEP_MONTHLY=
+
+# Restic repository path
+RESTIC_REPOSITORY=
+
+# Tags for snapshots
+TAGS=

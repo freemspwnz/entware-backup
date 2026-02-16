@@ -1,0 +1,9 @@
+# Backup config file
+# OPTIONAL: 
+# MUST:
+
+# Backup directory
+BACKUP_DIR=
+
+# Log directory
+LOG_DIR=

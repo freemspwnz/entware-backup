@@ -1,0 +1,4 @@
+#!/bin/sh
+. /opt/root/lib/log/log.sh
+
+log "$@"
