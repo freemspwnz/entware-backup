@@ -99,12 +99,12 @@
 
 ## Логирование
 
-- Сообщения идут в syslog через **logger** с тегом `backup` и приоритетами:  
-  INFO → `user.info`, WARN → `user.warning`, ERROR → `user.err`, DEBUG → `user.debug`.
-- Объёмный вывод restic (backup/forget/check) передаётся в logger **одним пайпом** (без вызова logger на каждую строку), чтобы не перегружать буфер.
-- Если задан **BACKUP_LOG_FILE**, строки дублируются в файл (и в logger). Ротация — через `logrotate` (файл `opt/etc/logrotate.d/backup`).
+- Все сообщения пишутся **только в файл** (по умолчанию `/opt/var/log/backup.log`) через `printf`, без использования системного `logger`.
+- Формат строки: `YYYY-MM-DD HH:MM:SS [LEVEL] message`.
+- Объёмный вывод restic (backup/forget/check) идёт в тот же файл одним потоком (через `tee`), без отдельных процессов на каждую строку.
+- Ротация файла `/opt/var/log/backup.log` настраивается через `logrotate` (файл `opt/etc/logrotate.d/backup`).
 
-Просмотр логов: `logread | grep backup` или просмотр файла `/opt/var/log/backup.log` при включённой записи в файл.
+Просмотр логов: `cat /opt/var/log/backup.log` или через любой текстовый просмотрщик.
 
 ---
 

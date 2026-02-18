@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Restic helpers for Entware.
 # Variables: RESTIC_BIN (default: restic from PATH), RESTIC_REPOSITORY.
-# Restic output is piped to logger in one stream (via tee when needed).
+# Restic output is captured and mirrored to the backup log file in one stream (via tee when needed).
 
 RESTIC_BIN="${RESTIC_BIN:-restic}"
 
@@ -17,7 +17,7 @@ backup_check_repository() {
     log_info "Restic repository is accessible."
 }
 
-# Run restic backup. Single pipe: restic -> tee (file + stdout) -> logger.
+# Run restic backup. Single pipe: restic -> tee (file + stdout).
 # Result: BACKUP_RESTIC_LOG, BACKUP_RESTIC_EXIT.
 backup_run_restic_backup() {
     local tmp_log
@@ -26,12 +26,10 @@ backup_run_restic_backup() {
 
     if [[ -n "${BACKUP_LOG_FILE:-}" ]]; then
         "${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" backup "$@" 2>&1 \
-            | tee -a "${BACKUP_LOG_FILE}" "$tmp_log" \
-            | logger -t "${LOG_TAG:-backup}" -p user.info
+            | tee -a "${BACKUP_LOG_FILE}" "$tmp_log" >/dev/null
     else
         "${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" backup "$@" 2>&1 \
-            | tee "$tmp_log" \
-            | logger -t "${LOG_TAG:-backup}" -p user.info
+            | tee "$tmp_log" >/dev/null
     fi
     BACKUP_RESTIC_EXIT=${PIPESTATUS[0]}
     BACKUP_RESTIC_LOG="$(cat "$tmp_log")"
@@ -55,9 +53,7 @@ backup_forget() {
         --prune 2>&1)" || true
     BACKUP_FORGET_EXIT=$?
     if [[ -n "${BACKUP_LOG_FILE:-}" ]]; then
-        printf '%s\n' "$out" | tee -a "${BACKUP_LOG_FILE}" | logger -t "${LOG_TAG:-backup}" -p user.info
-    else
-        printf '%s\n' "$out" | logger -t "${LOG_TAG:-backup}" -p user.info
+        printf '%s\n' "$out" >> "${BACKUP_LOG_FILE}"
     fi
     return "$BACKUP_FORGET_EXIT"
 }
@@ -68,9 +64,7 @@ backup_integrity_check() {
     out="$("${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" check 2>&1)" || true
     BACKUP_CHECK_EXIT=$?
     if [[ -n "${BACKUP_LOG_FILE:-}" ]]; then
-        printf '%s\n' "$out" | tee -a "${BACKUP_LOG_FILE}" | logger -t "${LOG_TAG:-backup}" -p user.info
-    else
-        printf '%s\n' "$out" | logger -t "${LOG_TAG:-backup}" -p user.info
+        printf '%s\n' "$out" >> "${BACKUP_LOG_FILE}"
     fi
     return "$BACKUP_CHECK_EXIT"
 }
