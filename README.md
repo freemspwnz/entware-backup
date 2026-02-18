@@ -22,7 +22,8 @@
 ## Требования
 
 - **Bash**: `/opt/bin/bash` (Entware).
-- **Пакеты**: `curl`, при SFTP — `openssh-client`. Restic — обычно ручная установка бинарника в `/opt/bin/restic`.
+- **Пакеты**: `curl`, `coreutils-install` (в стандартном Entware утилита `install` отсутствует), при SFTP — `openssh-client`.
+- **Restic**: как правило, ручная установка бинарника в `/opt/bin/restic` (см. документацию Restic / релизы GitHub).
 
 ---
 
