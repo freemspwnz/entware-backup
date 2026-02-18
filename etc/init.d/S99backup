@@ -1,11 +1,11 @@
 #!/opt/bin/sh
 #
 # SysVinit script for Entware: run backup on schedule or manually.
-# Install to /opt/etc/init.d/S99entware-backup.
+# Install to /opt/etc/init.d/S99backup.
 # Process PID: /opt/var/run/backup.pid
 
 BACKUP_PID_FILE="/opt/var/run/backup.pid"
-BACKUP_SCRIPT="/opt/bin/backup.sh"
+BACKUP_SCRIPT="/opt/usr/local/bin/backup.sh"
 
 start() {
     if [ -f "$BACKUP_PID_FILE" ]; then
@@ -19,8 +19,8 @@ start() {
 
     mkdir -p "$(dirname "$BACKUP_PID_FILE")"
     (
-        export BACKUP_CONF_PATH="${BACKUP_CONF_PATH:-/opt/etc/backup/backup.conf}"
-        export BACKUP_SECRETS_PATH="${BACKUP_SECRETS_PATH:-/opt/etc/backup/secrets.env}"
+        export BACKUP_CONF_PATH="${BACKUP_CONF_PATH:-/opt/usr/local/etc/backup/backup.conf}"
+        export BACKUP_SECRETS_PATH="${BACKUP_SECRETS_PATH:-/opt/usr/local/secrets/.backup.env}"
         "$BACKUP_SCRIPT"
     ) &
     echo $! > "$BACKUP_PID_FILE"

@@ -4,11 +4,11 @@ set -euo pipefail
 
 # Backup configuration loader for Entware.
 # Reads:
-#   /opt/etc/backup/backup.conf  — paths, arrays, options
-#   /opt/secrets/.backup.env     — secrets (RESTIC_PASSWORD, TG_TOKEN, TG_CHAT_ID)
+#   /opt/usr/local/etc/backup/backup.conf  — paths, arrays, options
+#   /opt/usr/local/secrets/.backup.env     — secrets (RESTIC_PASSWORD, TG_TOKEN, TG_CHAT_ID)
 
-BACKUP_CONF_PATH_DEFAULT="/opt/etc/backup/backup.conf"
-BACKUP_SECRETS_PATH_DEFAULT="/opt/secrets/.backup.env"
+BACKUP_CONF_PATH_DEFAULT="/opt/usr/local/etc/backup/backup.conf"
+BACKUP_SECRETS_PATH_DEFAULT="/opt/usr/local/secrets/.backup.env"
 
 backup_require_var() {
     local name="$1"
