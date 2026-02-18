@@ -24,9 +24,9 @@ backup_run_restic_backup() {
     tmp_log="$(mktemp "${TMPDIR:-/tmp}/restic_log.XXXXXX" 2>/dev/null)" || tmp_log="${TMPDIR:-/tmp}/restic_log.$$"
     trap "rm -f '${tmp_log}'" RETURN
 
-    if [[ -n "${BACKUP_LOG_FILE:-}" ]]; then
+    if [[ -n "${LOG_FILE:-}" ]]; then
         "${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" backup "$@" 2>&1 \
-            | tee -a "${BACKUP_LOG_FILE}" "$tmp_log" >/dev/null
+            | tee -a "${LOG_FILE}" "$tmp_log" >/dev/null
     else
         "${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" backup "$@" 2>&1 \
             | tee "$tmp_log" >/dev/null
@@ -52,8 +52,8 @@ backup_forget() {
         --keep-monthly "$keep_monthly" \
         --prune 2>&1)" || true
     BACKUP_FORGET_EXIT=$?
-    if [[ -n "${BACKUP_LOG_FILE:-}" ]]; then
-        printf '%s\n' "$out" >> "${BACKUP_LOG_FILE}"
+    if [[ -n "${LOG_FILE:-}" ]]; then
+        printf '%s\n' "$out" >> "${LOG_FILE}"
     fi
     return "$BACKUP_FORGET_EXIT"
 }
@@ -63,8 +63,8 @@ backup_integrity_check() {
     local out
     out="$("${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" check 2>&1)" || true
     BACKUP_CHECK_EXIT=$?
-    if [[ -n "${BACKUP_LOG_FILE:-}" ]]; then
-        printf '%s\n' "$out" >> "${BACKUP_LOG_FILE}"
+    if [[ -n "${LOG_FILE:-}" ]]; then
+        printf '%s\n' "$out" >> "${LOG_FILE}"
     fi
     return "$BACKUP_CHECK_EXIT"
 }

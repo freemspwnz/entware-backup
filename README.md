@@ -72,7 +72,7 @@
     ├── run/
     │   └── backup.pid              # PID процесса бэкапа (при запуске через init.d)
     └── log/
-        └── backup.log              # Опционально (BACKUP_LOG_FILE в backup.conf)
+        └── backup.log              # LOG_FILE в backup.conf
 ```
 
 ---
@@ -87,8 +87,8 @@
 - **EXTRA_BACKUP_PATHS** — массив дополнительных путей.
 - **RESTIC_EXCLUDES** — массив исключений для restic.
 - **KEEP_DAILY**, **KEEP_WEEKLY**, **KEEP_MONTHLY** — политика забывания снимков.
-- **BACKUP_LOG_FILE** — опционально, например `/opt/var/log/backup.log` (тогда настройте logrotate).
-- **BACKUP_DEBUG** — `1` включает уровень DEBUG в логах.
+- **LOG_FILE** — опционально, например `/opt/var/log/backup.log` (тогда настройте logrotate).
+- **DEBUG_FLG** — `1` включает уровень DEBUG в логах.
 
 ### .backup.env (`/opt/usr/local/secrets/.backup.env`)
 

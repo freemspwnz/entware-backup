@@ -35,8 +35,8 @@ KEEP_DAILY=7
 KEEP_WEEKLY=4
 KEEP_MONTHLY=3
 
-# Optional: write log to file (for logrotate)
-# BACKUP_LOG_FILE="/opt/var/log/backup.log"
+# Write log to file (for logrotate)
+LOG_FILE="/opt/var/log/backup.log"
 
-# Debug: BACKUP_DEBUG=1 enables DEBUG level
-# BACKUP_DEBUG=0
+# Debug: DEBUG_FLG=1 enables DEBUG level
+# DEBUG_FLG=0

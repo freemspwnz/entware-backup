@@ -51,6 +51,12 @@ else
     echo "Leaving existing ${ETC_BACKUP}/backup.conf unchanged."
 fi
 
+if [[ ! -f "${SECRETS_DIR}/.backup.env" ]]; then
+    echo "Create ${SECRETS_DIR}/.backup.env with RESTIC_PASSWORD and optionally TG_TOKEN, TG_CHAT_ID."
+else
+    echo "Leaving existing ${SECRETS_DIR}/.backup.env unchanged."
+fi
+
 install -m 755 "${REPO_ROOT}/etc/init.d/S99backup" "${INIT_D}/S99backup"
 install -m 644 "${REPO_ROOT}/etc/logrotate.d/backup" "${LOGROTATE_D}/backup"
 
@@ -64,6 +70,7 @@ if [[ ! -f "${LOGROTATE_DAILY}" ]]; then
 #!/bin/sh
 /opt/sbin/logrotate -s /opt/var/lib/logrotate.status /opt/etc/logrotate.conf
 EOF
+  echo "Created ${LOGROTATE_DAILY}"
   chmod +x "${LOGROTATE_DAILY}"
 fi
 
@@ -75,20 +82,16 @@ if [[ -f "${CRONTAB_FILE}" ]]; then
   if ! grep -q "/opt/usr/local/bin/backup.sh" "${CRONTAB_FILE}"; then
     echo '0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh' >> "${CRONTAB_FILE}"
     CRONTAB_UPDATED=1
+    echo "Added backup to cron: 0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh"
   fi
 else
   echo '0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh' > "${CRONTAB_FILE}"
   CRONTAB_UPDATED=1
+  echo "Added backup to cron: 0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh"
 fi
 
 if [[ "${CRONTAB_UPDATED}" -eq 1 && -x /opt/etc/init.d/S10cron ]]; then
   /opt/etc/init.d/S10cron restart || true
-fi
-
-if [[ ! -f "${SECRETS_DIR}/.backup.env" ]]; then
-    echo "Create ${SECRETS_DIR}/.backup.env with RESTIC_PASSWORD and optionally TG_TOKEN, TG_CHAT_ID."
-else
-    echo "Leaving existing ${SECRETS_DIR}/.backup.env unchanged."
 fi
 
 if [[ -f /opt/etc/profile ]]; then
