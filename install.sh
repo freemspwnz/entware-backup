@@ -35,7 +35,10 @@ mkdir -p "${VAR_LOG}"
 
 install -m 755 "${REPO_ROOT}/bin/backup.sh" "${BIN_DIR}/backup.sh"
 
-for f in logger.sh telegram.sh config.sh disk_check.sh main.sh report.sh restic.sh; do
+install -m 644 "${REPO_ROOT}/lib/logger.sh"   "${BACKUP_LIB_DIR}/logger.sh"
+install -m 644 "${REPO_ROOT}/lib/telegram.sh" "${BACKUP_LIB_DIR}/telegram.sh"
+
+for f in config.sh disk_check.sh main.sh report.sh restic.sh; do
     install -m 644 "${REPO_ROOT}/lib/backup/${f}" "${BACKUP_LIB_DIR}/${f}"
 done
 
