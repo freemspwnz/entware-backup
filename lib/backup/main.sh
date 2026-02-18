@@ -50,12 +50,16 @@ backup_run() {
 
     local restic_stats
     restic_stats="$(backup_extract_restic_stats)"
+    local restic_log_tail=""
+    if [[ -n "${BACKUP_RESTIC_LOG:-}" ]]; then
+        restic_log_tail="$(printf '%s\n' "${BACKUP_RESTIC_LOG}" | tail -n 50)"
+    fi
     local repo_name
     repo_name="${RESTIC_REPOSITORY##*/}"
 
     if [[ "${BACKUP_RESTIC_EXIT:-1}" -ne 0 ]]; then
         log_error "Restic backup finished with errors."
-        backup_send_telegram_report "${host}" "${repo_name}" "[FAIL]" "failed" "${restic_stats:-no stats}"
+        backup_send_telegram_report "${host}" "${repo_name}" "[FAIL]" "failed" "${restic_stats:-no stats}" "${restic_log_tail}"
         return 1
     fi
 
@@ -71,6 +75,6 @@ backup_run() {
         log_warn "Integrity check reported issues; consider manual check."
     fi
 
-    backup_send_telegram_report "${host}" "${repo_name}" "[OK]" "completed successfully" "${restic_stats:-no stats}"
+    backup_send_telegram_report "${host}" "${repo_name}" "[OK]" "completed successfully" "${restic_stats:-no stats}" ""
     return 0
 }

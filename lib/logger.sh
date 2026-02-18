@@ -34,10 +34,3 @@ log_error() {
 log_debug() {
     _log "DEBUG" "$*"
 }
-
-# Append arbitrary output to the log file.
-# Usage: backup_log_stream <<< "text"  or  backup_log_stream < file
-backup_log_stream() {
-    # We intentionally ignore the level here and just append raw lines.
-    cat >> "${LOG_FILE}"
-}

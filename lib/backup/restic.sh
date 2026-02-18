@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Restic helpers for Entware.
 # Variables: RESTIC_BIN (default: restic from PATH), RESTIC_REPOSITORY.
-# Restic output is captured and mirrored to the backup log file in one stream (via tee when needed).
+# Restic output is captured into memory for stats/Telegram, but not written raw into LOG_FILE.
 
 RESTIC_BIN="${RESTIC_BIN:-restic}"
 
@@ -17,20 +17,15 @@ backup_check_repository() {
     log_info "Restic repository is accessible."
 }
 
-# Run restic backup. Single pipe: restic -> tee (file + stdout).
+# Run restic backup. Single pipe: restic -> tee (stdout + tmp file).
 # Result: BACKUP_RESTIC_LOG, BACKUP_RESTIC_EXIT.
 backup_run_restic_backup() {
     local tmp_log
     tmp_log="$(mktemp "${TMPDIR:-/tmp}/restic_log.XXXXXX" 2>/dev/null)" || tmp_log="${TMPDIR:-/tmp}/restic_log.$$"
     trap "rm -f '${tmp_log}'" RETURN
 
-    if [[ -n "${LOG_FILE:-}" ]]; then
-        "${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" backup "$@" 2>&1 \
-            | tee -a "${LOG_FILE}" "$tmp_log" >/dev/null
-    else
-        "${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" backup "$@" 2>&1 \
-            | tee "$tmp_log" >/dev/null
-    fi
+    "${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" backup "$@" 2>&1 \
+        | tee "$tmp_log"
     BACKUP_RESTIC_EXIT=${PIPESTATUS[0]}
     BACKUP_RESTIC_LOG="$(cat "$tmp_log")"
 }
@@ -52,9 +47,6 @@ backup_forget() {
         --keep-monthly "$keep_monthly" \
         --prune 2>&1)" || true
     BACKUP_FORGET_EXIT=$?
-    if [[ -n "${LOG_FILE:-}" ]]; then
-        printf '%s\n' "$out" >> "${LOG_FILE}"
-    fi
     return "$BACKUP_FORGET_EXIT"
 }
 
@@ -63,8 +55,5 @@ backup_integrity_check() {
     local out
     out="$("${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" check 2>&1)" || true
     BACKUP_CHECK_EXIT=$?
-    if [[ -n "${LOG_FILE:-}" ]]; then
-        printf '%s\n' "$out" >> "${LOG_FILE}"
-    fi
     return "$BACKUP_CHECK_EXIT"
 }
