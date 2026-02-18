@@ -1,9 +1,42 @@
-# Backup config file
-# OPTIONAL: 
-# MUST:
+# Example backup configuration for Entware
+# Copy to /opt/etc/backup/backup.conf and customize.
+# Secrets: /opt/secrets/.backup.env (RESTIC_PASSWORD, TG_TOKEN, TG_CHAT_ID)
 
-# Backup directory
-BACKUP_DIR=
+# Backup source directory (required)
+BACKUP_SOURCE_DIR="/opt/root"
 
-# Log directory
-LOG_DIR=
+# Restic repository (required). Examples:
+#   local: /opt/var/backup/restic
+#   SFTP:  sftp:user@host:/path/to/repo
+RESTIC_REPOSITORY="sftp:user@router:/tmp/mnt/SSD/entware"
+
+# Tags and host for snapshots
+RESTIC_TAGS="scheduled,entware"
+RESTIC_HOST="$(hostname)"
+
+# Path to restic binary (default: restic from PATH)
+# RESTIC_BIN="/opt/bin/restic"
+
+# Additional backup directories (array)
+# EXTRA_BACKUP_PATHS=(
+#   "/opt/etc"
+# )
+EXTRA_BACKUP_PATHS=()
+
+# Restic exclude patterns (array)
+RESTIC_EXCLUDES=(
+  "${BACKUP_SOURCE_DIR}/var/log"
+  "${BACKUP_SOURCE_DIR}/tmp"
+  "${BACKUP_SOURCE_DIR}/.cache"
+)
+
+# Snapshot retention policy (forget --prune)
+KEEP_DAILY=7
+KEEP_WEEKLY=4
+KEEP_MONTHLY=3
+
+# Optional: write log to file (for logrotate)
+# BACKUP_LOG_FILE="/opt/var/log/backup.log"
+
+# Debug: BACKUP_DEBUG=1 enables DEBUG level
+# BACKUP_DEBUG=0

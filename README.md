@@ -1,218 +1,140 @@
-# Restic Backup for Entware / Keenetic
+# Restic Backup для Entware / Keenetic
 
-Набор модульных скриптов для автоматизированного резервного копирования через [Restic](https://restic.net/) на роутерах Keenetic с установленным Entware. Секреты выносятся в `.env`-файлы, уведомления отправляются в Telegram.
+Модульный бэкап через [Restic](https://restic.net/) для роутеров Keenetic с Entware. Логирование через `logger` (syslog), один конфиг `backup.conf`, опционально — запись в файл с ротацией через logrotate. Уведомления в Telegram.
 
 ---
 
-## Project Overview
+## Обзор
 
 Скрипты выполняют:
 
 | Этап | Действие |
 |------|----------|
-| **1. Disk checkup** | Проверка наличия и валидности репозиториев в `BACKUP_DIR` перед запуском. |
-| **2. Backup** | Резервное копирование `/opt/root` в Restic-репозиторий с исключениями (логи, кэш, скрытые каталоги). |
-| **3. Cleanup** | Политика хранения: `forget` + `prune` по правилам keep-daily/weekly/monthly для всех репозиториев в `BACKUP_DIR`. |
-| **4. Integrity check** | Проверка целостности всех репозиториев в `BACKUP_DIR` через `restic check`. |
+| **1. Disk checkup** | Проверка каталога-источника `BACKUP_SOURCE_DIR`: существование, читаемость, наличие поддиректорий. |
+| **2. Backup** | Резервное копирование в Restic-репозиторий (один репозиторий из конфига, исключения и доп. пути — массивами). |
+| **3. Cleanup** | Политика хранения: `forget` + `prune` (keep-daily/weekly/monthly). |
+| **4. Integrity check** | Проверка целостности репозитория через `restic check`. |
 
-При успехе или ошибке в Telegram уходит краткий отчёт (HTML).
+При успехе или ошибке в Telegram уходит краткий HTML-отчёт.
 
 ---
 
-## Prerequisites
+## Требования
 
-### Пакеты Entware (opkg)
+- **Bash**: `/opt/bin/bash` (Entware).
+- **Пакеты**: `curl`, при SFTP — `openssh-client`. Restic — обычно ручная установка бинарника в `/opt/bin/restic`.
 
-Установите зависимости:
+---
+
+## Установка
+
+На устройстве с Entware (из корня репозитория):
 
 ```bash
-opkg update
-opkg install curl bzip2
+/opt/bin/bash install.sh
 ```
 
-При использовании удалённого репозитория (SFTP, REST и т.д.) могут понадобиться дополнительные пакеты (например, `openssh-client` для SFTP).
-
-### Restic (ручная установка)
-
-Restic в репозитории Entware может отсутствовать или быть устаревшим. Рекомендуется ставить бинарник вручную:
-
-1. Определите архитектуру роутера:
-   ```bash
-   uname -m
-   ```
-   Типичные значения для Keenetic: `aarch64`, `armv7l`, `mips`.
-
-2. Скачайте бинарник с [GitHub Releases](https://github.com/restic/restic/releases) и положите в `PATH` (например, `/opt/bin/restic`):
-   ```bash
-   # Пример для aarch64
-   curl -sSL -o /opt/bin/restic https://github.com/restic/restic/releases/download/v0.16.2/restic_0.16.2_linux_arm64.bz2
-   bunzip2 -f /opt/bin/restic.bz2 2>/dev/null || true
-   chmod +x /opt/bin/restic
-   restic version
-   ```
-
-> **Pro-tip:** На слабых роутерах с ограниченной RAM при больших бэкапах рассмотрите создание swap-файла на USB/SD, иначе процесс может быть убит OOM-killer.
+Скрипт создаёт каталоги в `/opt`, копирует `bin/backup.sh`, `lib/*`, пример конфига в `/opt/etc/backup/backup.conf`, init.d-скрипт и конфиг logrotate. Существующие `backup.conf` и файл секретов не перезаписываются.
 
 ---
 
-## Project Structure
+## Структура после установки
 
 ```
-/opt/root/
-├── bin/                    # Точки входа
-│   ├── backup              # Основной скрипт бэкапа (4 шага)
-│   ├── send                # Отправка сообщений (Telegram)
-│   ├── format              # Форматирование текста
-│   ├── log                 # Логирование
-│   └── import              # Импорт конфигов и библиотек
-├── lib/                    # Модульные библиотеки
-│   ├── backup/
-│   │   ├── disk_checkup.sh # Проверка BACKUP_DIR и репозиториев
-│   │   ├── restic_backup.sh
-│   │   ├── cleanup.sh      # forget + prune
-│   │   ├── integrity_check.sh
-│   │   └── parse_log.sh    # Выборка строк из логов restic для отчётов
-│   ├── send/
-│   │   └── tg/send_html.sh # HTTP-запрос к Telegram Bot API
-│   ├── import/             # Загрузка .conf/.env и подключаемых скриптов
-│   ├── format/
-│   ├── log/
-│   └── shared/             # check_var и т.д.
-├── etc/                    # Конфигурация (не коммитится)
-│   ├── backup/
-│   │   ├── backup.conf
-│   │   └── backup.conf.example
-│   └── restic/
-│       ├── restic.conf
-│       └── restic.conf.example
-├── secrets/                # Секреты (не коммитятся)
-│   ├── .tg.env             # TOKEN, CHAT_ID для Telegram
+/opt/
+├── bin/
+│   └── backup.sh           # Точка входа (#!/opt/bin/bash)
+├── lib/
+│   ├── logger.sh            # logger -t backup -p user.info/err/...
+│   ├── telegram.sh          # Telegram Bot API
 │   └── backup/
-│       └── .restic.env     # RESTIC_PASSWORD и др.
-├── var/log/                # Логи запусков бэкапа
-└── README.md
+│       ├── config.sh        # Загрузка backup.conf и .backup.env
+│       ├── disk_check.sh    # Проверка BACKUP_SOURCE_DIR
+│       ├── restic.sh        # backup, forget, check (вывод в logger пайпом)
+│       ├── report.sh        # Сборка HTML-отчёта для Telegram
+│       └── main.sh          # Оркестрация: disk check → backup → forget → check → report
+├── etc/
+│   ├── backup/
+│   │   └── backup.conf      # Основной конфиг (из backup.conf.example)
+│   ├── init.d/
+│   │   └── S99entware-backup   # start | stop | restart | status, PID в /opt/var/run/backup.pid
+│   └── logrotate.d/
+│       └── backup          # Ротация /opt/var/log/backup.log
+├── secrets/
+│   └── .backup.env         # RESTIC_PASSWORD, TG_TOKEN, TG_CHAT_ID
+└── var/
+    ├── run/
+    │   └── backup.pid      # PID процесса бэкапа (при запуске через init.d)
+    └── log/
+        └── backup.log      # Опционально (BACKUP_LOG_FILE в backup.conf)
 ```
 
-Конфиги и секреты подгружаются через `import -f <file>`. Библиотеки подключаются через `import -l <dir>`.
+---
+
+## Конфигурация
+
+### backup.conf (`/opt/etc/backup/backup.conf`)
+
+- **BACKUP_SOURCE_DIR** — каталог для бэкапа (обязательно), например `/opt/root`.
+- **RESTIC_REPOSITORY** — репозиторий (local или SFTP), обязательный.
+- **RESTIC_TAGS**, **RESTIC_HOST** — теги и хост снимков.
+- **EXTRA_BACKUP_PATHS** — массив дополнительных путей.
+- **RESTIC_EXCLUDES** — массив исключений для restic.
+- **KEEP_DAILY**, **KEEP_WEEKLY**, **KEEP_MONTHLY** — политика забывания снимков.
+- **BACKUP_LOG_FILE** — опционально, например `/opt/var/log/backup.log` (тогда настройте logrotate).
+- **BACKUP_DEBUG** — `1` включает уровень DEBUG в логах.
+
+### .backup.env (`/opt/secrets/.backup.env`)
+
+- **RESTIC_PASSWORD** — пароль репозитория.
+- **TG_TOKEN**, **TG_CHAT_ID** — для Telegram-уведомлений (опционально).
 
 ---
 
-## Setup & Configuration
+## Логирование
 
-### 1. Каталог секретов и конфигов
+- Сообщения идут в syslog через **logger** с тегом `backup` и приоритетами:  
+  INFO → `user.info`, WARN → `user.warning`, ERROR → `user.err`, DEBUG → `user.debug`.
+- Объёмный вывод restic (backup/forget/check) передаётся в logger **одним пайпом** (без вызова logger на каждую строку), чтобы не перегружать буфер.
+- Если задан **BACKUP_LOG_FILE**, строки дублируются в файл (и в logger). Ротация — через `logrotate` (файл `opt/etc/logrotate.d/backup`).
 
-- Создайте каталоги и скопируйте примеры:
-  ```bash
-  mkdir -p /opt/root/secrets/backup
-  mkdir -p /opt/root/etc/backup /opt/root/etc/restic
-  cp /opt/root/etc/backup/backup.conf.example /opt/root/etc/backup/backup.conf
-  cp /opt/root/etc/restic/restic.conf.example /opt/root/etc/restic/restic.conf
-  ```
-- Создайте файлы секретов (имена как в примерах ниже), без коммита в git.
-
-### 2. Обязательные переменные
-
-| Файл | Переменные | Описание |
-|------|------------|----------|
-| **etc/backup/backup.conf** | `BACKUP_DIR`, `LOG_DIR` | Каталог с поддиректориями-репозиториями и каталог логов. |
-| **etc/restic/restic.conf** | `KEEP_DAILY`, `KEEP_WEEKLY`, `KEEP_MONTHLY`, `RESTIC_REPOSITORY`, `TAGS` | Политика хранения и путь репозитория для бэкапа, теги снапшотов. |
-| **secrets/backup/.restic.env** | `RESTIC_PASSWORD` (и при необходимости `RESTIC_REPOSITORY`) | Пароль репозитория. |
-| **secrets/.tg.env** | `TOKEN`, `CHAT_ID` | Токен бота и ID чата для Telegram. |
-
-В `.example`-файлах указаны имена переменных; значения задаются только в рабочих `backup.conf`, `restic.conf` и в секретных `.env`.
-
-### 3. Структура BACKUP_DIR
-
-- `BACKUP_DIR` — каталог, в котором лежат **поддиректории** — каждый подкаталог считается путём к одному Restic-репозиторию.
-- В каждой такой поддиректории должен быть файл **config** (маркер валидного репозитория). Каталог `lost+found` игнорируется.
-- Файлы или симлинки в `BACKUP_DIR` считаются ошибкой; при наличии невалидных записей или отсутствии ни одного репозитория **disk_checkup** завершается с ошибкой и бэкап не стартует.
-- **Backup** пишет только в репозиторий из `RESTIC_REPOSITORY` (в `restic.conf`). **Cleanup** и **integrity check** выполняются для каждого репозитория в `BACKUP_DIR`. Обычно `RESTIC_REPOSITORY` указывает на один из каталогов внутри `BACKUP_DIR` (например, `BACKUP_DIR=/opt/backup`, `RESTIC_REPOSITORY=/opt/backup/main`).
+Просмотр логов: `logread | grep backup` или просмотр файла `/opt/var/log/backup.log` при включённой записи в файл.
 
 ---
 
-## Usage
+## Запуск
 
-### Запуск вручную
-
-Из корня проекта (или с путём к скрипту):
+### Вручную
 
 ```bash
-/opt/root/bin/backup
+/opt/bin/backup.sh
 ```
 
-Скрипт по очереди: проверяет диск → делает backup → prune → integrity check. Лог пишется в `$LOG_DIR/backup_YYYYMMDD_HHMMSS.log`.
-
-### Cron (регулярный запуск)
-
-Добавьте задачу в crontab (например, раз в день в 4:00):
+### Через init.d (SysVinit)
 
 ```bash
-crontab -e
+/opt/etc/init.d/S99entware-backup start   # Запуск в фоне, PID в /opt/var/run/backup.pid
+/opt/etc/init.d/S99entware-backup stop
+/opt/etc/init.d/S99entware-backup restart
+/opt/etc/init.d/S99entware-backup status
 ```
 
-```cron
-0 4 * * * /opt/root/bin/backup
+### По расписанию (cron)
+
+```bash
+0 4 * * * /opt/bin/backup.sh
 ```
 
-Убедитесь, что в cron-окружении доступны `PATH` и при необходимости переменные, требуемые для Restic (если не заданы в `.restic.env`).
-
-### disk_checkup
-
-- Читает `backup.conf`, получает `BACKUP_DIR`.
-- Обходит `$BACKUP_DIR/*`: только директории с файлом `config` считаются репозиториями; файлы и прочие типы записей — ошибка.
-- Если есть невалидные записи или ни одного репозитория — возврат с ошибкой, бэкап не выполняется, в Telegram уходит сообщение о провале checkup.
-
-### parse_log
-
-Вспомогательная функция для коротких отчётов в Telegram: фильтрует вывод Restic по типу операции:
-
-| Тип | Назначение |
-|-----|------------|
-| `--backup` | Строки про Files/Dirs/Added to the repository. |
-| `--cleanup` | Строки про keep N snapshots, removed, remaining, frees. |
-| `--checkup` | Строки про snapshots и no errors were found. |
-
-Используется в `restic_backup.sh`, `cleanup.sh`, `integrity_check.sh` для формирования блока «Stats» в сообщении.
+Убедитесь, что в cron доступны `PATH` и при необходимости переменные из `secrets.env` (скрипт сам подгружает конфиг и секреты).
 
 ---
 
-## Telegram Integration
+## Безопасность
 
-1. Создайте бота через [@BotFather](https://t.me/BotFather), получите **токен**.
-2. Узнайте **chat_id** (личный или группы), например через [@userinfobot](https://t.me/userinfobot) или запрос к API после отправки боту сообщения:
-   ```bash
-   curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates"
-   ```
-3. Создайте `/opt/root/secrets/.tg.env`:
-   ```bash
-   TOKEN=123456:ABC-DEF...
-   CHAT_ID=-1001234567890
-   ```
-4. Скрипт `send -t "<message>"` подгружает `secrets/.tg.env` и вызывает Telegram Bot API (HTML). Отправка используется из `bin/backup` для итогового отчёта.
-
-> **Pro-tip:** На роутере без доступа в интернет в момент бэкапа отправка в Telegram не сработает; скрипт при этом не падает, основная логика бэкапа выполняется по логам.
+- Файлы **\*.env**, **\*.conf** в **.gitignore**. В репозитории только **backup.conf.example** и примеры. Не коммитьте рабочие конфиги и секреты.
 
 ---
 
-## Security
+## Лицензия
 
-- Каталог **secrets/** и файлы **\*.env**, **\*.env.\*** добавлены в **.gitignore** — в репозиторий не должны попадать пароли, токены и chat_id.
-- Конфиги **\*.conf** также в .gitignore; в репозитории хранятся только **\*.conf.example** с перечнем переменных без значений.
-- Не коммитьте рабочие `backup.conf`, `restic.conf` и любые файлы из `secrets/`. Проверяйте `git status` перед push.
-
----
-
-## Pro-tips (Keenetic / Entware)
-
-| Проблема | Рекомендация |
-|----------|--------------|
-| Мало RAM, процесс убит | Уменьшите объём бэкапа (исключения в `restic backup`), поставьте swap на USB/SD или запускайте бэкап в часы минимальной нагрузки. |
-| Медленный или нестабильный диск | Храните репозиторий на внешнем USB/SD с нормальной файловой системой (ext4 и т.п.), не в tmpfs. |
-| Cron не видит PATH | В crontab задайте явно: `PATH=/opt/bin:/opt/sbin:/bin:/usr/bin` или вызывайте скрипт через `env -i PATH=... /opt/root/bin/backup`. |
-| Нет Restic в opkg | Используйте ручную установку бинарника под вашу архитектуру (см. Prerequisites). |
-
----
-
-## License
-
-См. файл [LICENSE](LICENSE) в корне проекта.
+См. [LICENSE](LICENSE).

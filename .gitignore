@@ -12,30 +12,11 @@
 .local/
 .cursor/
 
-# Midnight Commander local history
-.local/share/mc/
-.cache/mc/
-
-# Restic cache
-.cache/restic/
-
-# Logs produced by backup scripts
-var/log/
-
 # Secrets and environment files
-secrets/
 *.env
-*.env.*
 
 # Configs
 *.conf
 
-# Services
-services/
-
-# Scripts
-scripts/
-
-# Dev docs
-docs/
-tests/
+# Reference
+reference/

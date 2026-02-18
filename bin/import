@@ -1,4 +1,0 @@
-#!/bin/sh
-. /opt/root/lib/import/import.sh
-
-import "$@"

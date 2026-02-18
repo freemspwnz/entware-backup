@@ -1,4 +1,0 @@
-#!/bin/sh
-. /opt/root/lib/format/format.sh
-
-format "$@"

@@ -1,4 +1,0 @@
-#!/bin/sh
-. /opt/root/lib/send/send.sh
-
-send "$@"
