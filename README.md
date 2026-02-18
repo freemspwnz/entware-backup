@@ -6,14 +6,14 @@
 
 ## Обзор
 
-Скрипты выполняют:
+Скрипт рассчитан на запуск **на роутере с Entware** и выполняет обслуживание Restic‑репозиториев на подключённом диске:
 
 | Этап | Действие |
 |------|----------|
-| **1. Disk checkup** | Проверка каталога-источника `BACKUP_SOURCE_DIR`: существование, читаемость, наличие поддиректорий. |
-| **2. Backup** | Резервное копирование в Restic-репозиторий (один репозиторий из конфига, исключения и доп. пути — массивами). |
-| **3. Cleanup** | Политика хранения: `forget` + `prune` (keep-daily/weekly/monthly). |
-| **4. Integrity check** | Проверка целостности репозитория через `restic check`. |
+| **1. Disk checkup** | Проверка каталога-источника `BACKUP_SOURCE_DIR`: существование, читаемость, наличие поддиректорий (что именно бэкапить — задаётся пользователем). |
+| **2. Backup** | Бэкап содержимого `BACKUP_SOURCE_DIR` (и `EXTRA_BACKUP_PATHS`) в репозиторий `RESTIC_REPOSITORY`. |
+| **3. Cleanup** | Очистка старых снимков (`forget` + `prune`, keep-daily/weekly/monthly) для **всех** Restic‑репозиториев в каталоге, в котором лежит `RESTIC_REPOSITORY`. |
+| **4. Integrity check** | `restic check` для **всех** репозиториев в этом каталоге. |
 
 При успехе или ошибке в Telegram уходит краткий HTML-отчёт.
 
@@ -22,7 +22,7 @@
 ## Требования
 
 - **Bash**: `/opt/bin/bash` (Entware).
-- **Пакеты**: `curl`, `coreutils-install` (в стандартном Entware утилита `install` отсутствует), при SFTP — `openssh-client`.
+- **Пакеты**: `curl`, `logrotate`, `coreutils-install` (отсутствуют в стандартном Entware); при наличии удалённых хостов, делающих бекапы по SFTP — `openssh-sftp-server`.
 - **Restic**: как правило, ручная установка бинарника в `/opt/bin/restic` (см. документацию Restic / релизы GitHub).
 
 ---
@@ -37,7 +37,7 @@
 /opt/bin/bash install.sh
 ```
 
-Скрипт создаёт каталоги в `/opt/usr/local`, копирует `bin/backup.sh`, `lib/*`, пример конфига в `/opt/usr/local/etc/backup/backup.conf`, init.d-скрипт и конфиг logrotate. Существующие `backup.conf` и файл секретов не перезаписываются.
+Скрипт создаёт каталоги в `/opt/usr/local`, копирует `bin/backup.sh`, `lib/*`, пример конфига в `/opt/usr/local/etc/backup/backup.conf`, init.d-скрипт и конфиг logrotate. Так же устанавливает задачу `/opt/etc/cron.daily/logrotate` и задачу для бекапов в `/opt/etc/crontab`. Существующие `backup.conf` и файл секретов не перезаписываются.
 
 ---
 
@@ -82,12 +82,12 @@
 ### backup.conf (`/opt/usr/local/etc/backup/backup.conf`)
 
 - **BACKUP_SOURCE_DIR** — каталог для бэкапа (обязательно), например `/opt/usr/local`.
-- **RESTIC_REPOSITORY** — репозиторий (local или SFTP), обязательный.
+- **RESTIC_REPOSITORY** — локальный путь к основному Restic‑репозиторию на роутере, например `/opt/var/backup/repo-main`. Очистка и проверка будут выполняться для **всех** подкаталогов в `dirname(RESTIC_REPOSITORY)`.
 - **RESTIC_TAGS**, **RESTIC_HOST** — теги и хост снимков.
 - **EXTRA_BACKUP_PATHS** — массив дополнительных путей.
 - **RESTIC_EXCLUDES** — массив исключений для restic.
 - **KEEP_DAILY**, **KEEP_WEEKLY**, **KEEP_MONTHLY** — политика забывания снимков.
-- **LOG_FILE** — опционально, например `/opt/var/log/backup.log` (тогда настройте logrotate).
+- **LOG_FILE** — `/opt/var/log/backup.log` (тогда настройте logrotate).
 - **DEBUG_FLG** — `1` включает уровень DEBUG в логах.
 
 ### .backup.env (`/opt/usr/local/secrets/.backup.env`)

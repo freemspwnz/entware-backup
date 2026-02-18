@@ -5,10 +5,11 @@
 # Backup source directory (required)
 BACKUP_SOURCE_DIR="/opt/usr/local"
 
-# Restic repository (required). Examples:
-#   local: /opt/var/backup/restic
-#   SFTP:  sftp:user@host:/path/to/repo
-RESTIC_REPOSITORY="sftp:user@router:/tmp/mnt/SSD/entware"
+# Restic repository (local path on router). All sibling directories under the
+# same parent directory will be treated as repositories for cleanup and check.
+# Example:
+#   RESTIC_REPOSITORY="/opt/var/backup/repo-main"
+RESTIC_REPOSITORY="/opt/var/backup/repo-main"
 
 # Tags and host for snapshots
 RESTIC_TAGS="scheduled, keenetic, home"
