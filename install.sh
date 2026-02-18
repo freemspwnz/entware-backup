@@ -20,6 +20,7 @@ INIT_D="/opt/etc/init.d"
 LOGROTATE_D="/opt/etc/logrotate.d"
 VAR_RUN="/opt/var/run"
 VAR_LOG="/opt/var/log"
+VAR_LIB="/opt/var/lib"
 
 echo "Installing from: ${REPO_ROOT}"
 
@@ -32,6 +33,7 @@ mkdir -p "${INIT_D}"
 mkdir -p "${LOGROTATE_D}"
 mkdir -p "${VAR_RUN}"
 mkdir -p "${VAR_LOG}"
+mkdir -p "${VAR_LIB}"
 
 install -m 755 "${REPO_ROOT}/bin/backup.sh" "${BIN_DIR}/backup.sh"
 
@@ -51,6 +53,37 @@ fi
 
 install -m 755 "${REPO_ROOT}/etc/init.d/S99backup" "${INIT_D}/S99backup"
 install -m 644 "${REPO_ROOT}/etc/logrotate.d/backup" "${LOGROTATE_D}/backup"
+
+# Ensure daily logrotate cron helper exists
+CRON_DAILY="/opt/etc/cron.daily"
+LOGROTATE_DAILY="${CRON_DAILY}/logrotate"
+
+mkdir -p "${CRON_DAILY}"
+if [[ ! -f "${LOGROTATE_DAILY}" ]]; then
+  cat > "${LOGROTATE_DAILY}" <<'EOF'
+#!/bin/sh
+/opt/sbin/logrotate -s /opt/var/lib/logrotate.status /opt/etc/logrotate.conf
+EOF
+  chmod +x "${LOGROTATE_DAILY}"
+fi
+
+# Ensure backup is scheduled in cron
+CRONTAB_FILE="/opt/etc/crontab"
+CRONTAB_UPDATED=0
+
+if [[ -f "${CRONTAB_FILE}" ]]; then
+  if ! grep -q "/opt/usr/local/bin/backup.sh" "${CRONTAB_FILE}"; then
+    echo '0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh' >> "${CRONTAB_FILE}"
+    CRONTAB_UPDATED=1
+  fi
+else
+  echo '0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh' > "${CRONTAB_FILE}"
+  CRONTAB_UPDATED=1
+fi
+
+if [[ "${CRONTAB_UPDATED}" -eq 1 && -x /opt/etc/init.d/S10cron ]]; then
+  /opt/etc/init.d/S10cron restart || true
+fi
 
 if [[ ! -f "${SECRETS_DIR}/.backup.env" ]]; then
     echo "Create ${SECRETS_DIR}/.backup.env with RESTIC_PASSWORD and optionally TG_TOKEN, TG_CHAT_ID."
