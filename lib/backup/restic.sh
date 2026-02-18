@@ -23,7 +23,7 @@ backup_check_repository() {
 # Result: BACKUP_RESTIC_LOG, BACKUP_RESTIC_EXIT.
 backup_run_restic_backup() {
     local tmp_log
-    tmp_log="$(mktemp "${TMPDIR:-/tmp}/restic_log.XXXXXX" 2>/dev/null)" || tmp_log="${TMPDIR:-/tmp}/restic_log.$$"
+    tmp_log="$(mktemp "${TMP:-/opt/tmp}/restic_log.XXXXXX" 2>/dev/null)" || tmp_log="${TMP:-/opt/tmp}/restic_log.$$"
     trap "rm -f '${tmp_log}'" RETURN
 
     "${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" backup "$@" 2>&1 \
