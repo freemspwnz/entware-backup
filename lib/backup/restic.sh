@@ -77,24 +77,6 @@ Stats:
         BACKUP_FORGET_EXIT=$had_error
         return "$had_error"
     fi
-
-    # Fallback: single repository if root dir cannot be derived
-    log_info "Pruning snapshots in repository: ${RESTIC_REPOSITORY} (keep-daily=${keep_daily}, keep-weekly=${keep_weekly}, keep-monthly=${keep_monthly})..."
-    out="$("${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" forget \
-        --keep-daily "$keep_daily" \
-        --keep-weekly "$keep_weekly" \
-        --keep-monthly "$keep_monthly" \
-        --prune 2>&1)" || true
-    BACKUP_FORGET_EXIT=$?
-    local repo_name="${RESTIC_REPOSITORY##*/}"
-    local status="[OK]"
-    [[ "$BACKUP_FORGET_EXIT" -ne 0 ]] && status="[FAIL]"
-    local prune_stats
-    prune_stats="$(printf '%s\n' "$out" | grep -E 'keep [0-9]+ snapshots|removed|remaining|frees [0-9]+|prune|unchanged' | head -20)" || prune_stats="(no stats)"
-    CLEANUP_REPORT="Repo '${repo_name}' prune: <b>${status}</b>
-Stats:
-<pre>${prune_stats}</pre>
-"
     return "$BACKUP_FORGET_EXIT"
 }
 
@@ -130,21 +112,5 @@ Stats:
         BACKUP_CHECK_EXIT=$had_error
         return "$had_error"
     fi
-
-    # Fallback: single repository
-    log_info "Running restic check for repository: ${RESTIC_REPOSITORY}"
-    local out
-    out="$("${RESTIC_BIN}" -r "${RESTIC_REPOSITORY}" check 2>&1)" || true
-    BACKUP_CHECK_EXIT=$?
-    local repo_name="${RESTIC_REPOSITORY##*/}"
-    local status="[OK]"
-    [[ "$BACKUP_CHECK_EXIT" -ne 0 ]] && status="[FAIL]"
-    local check_stats
-    check_stats="$(printf '%s\n' "$out" | grep -E 'check|no errors|pack|snapshot' | head -15)" || check_stats="(no errors were found)"
-    [[ -z "${check_stats}" ]] && check_stats="(no errors were found)"
-    CHECK_REPORT="Repo '${repo_name}' check: <b>${status}</b>
-Stats:
-<pre>${check_stats}</pre>
-"
     return "$BACKUP_CHECK_EXIT"
 }

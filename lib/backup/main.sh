@@ -8,7 +8,15 @@ set -euo pipefail
 TIMESTAMP="$(date '+%Y%m%d_%H%M%S')"
 
 backup_run() {
-    trap 'log_warn "Backup interrupted"' INT TERM HUP
+    # Single-instance lock (cron and init.d can both trigger at 4am)
+    local LOCK_DIR="/opt/var/run/backup.lock.d"
+    mkdir -p "$(dirname "$LOCK_DIR")"
+    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        log_info "Backup already running (lock held), exiting."
+        return 0
+    fi
+    trap 'rmdir "/opt/var/run/backup.lock.d" 2>/dev/null; log_warn "Backup interrupted"' INT TERM HUP
+    trap 'rmdir "/opt/var/run/backup.lock.d" 2>/dev/null' EXIT
 
     backup_load_config
     local host

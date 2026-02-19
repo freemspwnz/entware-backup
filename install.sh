@@ -83,6 +83,8 @@ if [[ -f "${CRONTAB_FILE}" ]]; then
     echo '0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh' >> "${CRONTAB_FILE}"
     CRONTAB_UPDATED=1
     echo "Added backup to cron: 0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh"
+  else
+    echo "Leaving existing backup schedule in cron unchanged."
   fi
 else
   echo '0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh' > "${CRONTAB_FILE}"
