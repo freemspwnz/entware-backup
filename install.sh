@@ -37,8 +37,8 @@ mkdir -p "${VAR_LIB}"
 
 install -m 755 "${REPO_ROOT}/bin/backup.sh" "${BIN_DIR}/backup.sh"
 
-install -m 644 "${REPO_ROOT}/lib/logger.sh"   "${BACKUP_LIB_DIR}/logger.sh"
-install -m 644 "${REPO_ROOT}/lib/telegram.sh" "${BACKUP_LIB_DIR}/telegram.sh"
+install -m 644 "${REPO_ROOT}/lib/logger.sh"   "${LIB_ROOT}/logger.sh"
+install -m 644 "${REPO_ROOT}/lib/telegram.sh" "${LIB_ROOT}/telegram.sh"
 
 for f in config.sh disk_check.sh main.sh report.sh restic.sh; do
     install -m 644 "${REPO_ROOT}/lib/backup/${f}" "${BACKUP_LIB_DIR}/${f}"
@@ -99,6 +99,9 @@ fi
 if [[ -f /opt/etc/profile ]]; then
   if ! grep -q "/opt/usr/local/bin" /opt/etc/profile; then
     echo 'export PATH="/opt/usr/local/bin:$PATH"' >> /opt/etc/profile
+    echo "Added /opt/usr/local/bin to PATH in /opt/etc/profile"
+  else
+    echo "Leaving existing PATH in /opt/etc/profile unchanged."
   fi
 fi
 
