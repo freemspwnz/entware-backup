@@ -39,7 +39,7 @@
 /opt/bin/bash install.sh
 ```
 
-Скрипт создаёт каталоги в `/opt/usr/local`, копирует `bin/backup.sh`, файлы из `lib/` и `lib/backup/`, пример конфига в `/opt/usr/local/etc/backup/backup.conf`, init.d-скрипт и конфиг logrotate. Также создаёт при необходимости задачу `/opt/etc/cron.daily/logrotate` и добавляет задачу для бэкапов в `/opt/etc/crontab`. Существующие `backup.conf` и файл секретов не перезаписываются.
+Скрипт создаёт каталоги в `/opt/usr/local`, копирует `bin/backup.sh`, файлы из `lib/` и `lib/backup/`, пример конфига в `/opt/usr/local/etc/backup/backup.conf`, init.d-скрипт и конфиг logrotate. Также создаёт при необходимости задачу `/opt/etc/cron.daily/logrotate` и файл расписания бэкапа `/opt/etc/cron.d/backup` (запуск в 05:00). Существующие `backup.conf` и файл секретов не перезаписываются.
 
 ---
 
@@ -138,11 +138,13 @@ export PATH="/opt/usr/local/bin:$PATH"
 
 ### По расписанию (cron)
 
-В системный crontab (`/opt/etc/crontab`) `install.sh` добавляет строку:
+В каталог `/opt/etc/cron.d/` `install.sh` создаёт файл `backup` с расписанием запуска в 05:00:
 
 ```bash
-0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh
+0 5 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh
 ```
+
+Если файл уже есть и в нём есть строка с запуском `backup.sh`, расписание не меняется. Если файла нет или в нём нет этой строки — она добавляется.
 
 Скрипт сам подгружает конфиг и секреты из `/opt/usr/local/etc/backup/backup.conf` и `/opt/usr/local/secrets/.backup.env`. Если в одно время запустить бэкап и из cron, и через init.d — выполнится один процесс, второй завершится с записью в лог «Backup already running (lock held), exiting.» и без отправки в Telegram.
 

@@ -74,22 +74,25 @@ EOF
   chmod +x "${LOGROTATE_DAILY}"
 fi
 
-# Ensure backup is scheduled in cron
-CRONTAB_FILE="/opt/etc/crontab"
+# Ensure backup is scheduled in cron.d (custom file /opt/etc/cron.d/backup, 05:00)
+CRON_D="/opt/etc/cron.d"
+BACKUP_CRON_FILE="${CRON_D}/backup"
+BACKUP_CRON_LINE="0 5 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh"
 CRONTAB_UPDATED=0
 
-if [[ -f "${CRONTAB_FILE}" ]]; then
-  if ! grep -q "/opt/usr/local/bin/backup.sh" "${CRONTAB_FILE}"; then
-    echo '0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh' >> "${CRONTAB_FILE}"
-    CRONTAB_UPDATED=1
-    echo "Added backup to cron: 0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh"
+mkdir -p "${CRON_D}"
+if [[ -f "${BACKUP_CRON_FILE}" ]]; then
+  if grep -q "/opt/usr/local/bin/backup.sh" "${BACKUP_CRON_FILE}"; then
+    echo "Leaving existing backup schedule in ${BACKUP_CRON_FILE} unchanged."
   else
-    echo "Leaving existing backup schedule in cron unchanged."
+    echo "${BACKUP_CRON_LINE}" >> "${BACKUP_CRON_FILE}"
+    CRONTAB_UPDATED=1
+    echo "Added backup schedule to ${BACKUP_CRON_FILE}: ${BACKUP_CRON_LINE}"
   fi
 else
-  echo '0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh' > "${CRONTAB_FILE}"
+  echo "${BACKUP_CRON_LINE}" > "${BACKUP_CRON_FILE}"
   CRONTAB_UPDATED=1
-  echo "Added backup to cron: 0 4 * * * root /opt/bin/bash /opt/usr/local/bin/backup.sh"
+  echo "Created ${BACKUP_CRON_FILE} with schedule: ${BACKUP_CRON_LINE}"
 fi
 
 if [[ "${CRONTAB_UPDATED}" -eq 1 && -x /opt/etc/init.d/S10cron ]]; then
