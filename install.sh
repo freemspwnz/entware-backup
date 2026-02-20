@@ -60,18 +60,20 @@ fi
 install -m 755 "${REPO_ROOT}/etc/init.d/S99backup" "${INIT_D}/S99backup"
 install -m 644 "${REPO_ROOT}/etc/logrotate.d/backup" "${LOGROTATE_D}/backup"
 
-# Ensure daily logrotate cron helper exists
+# Ensure daily logrotate cron helper exists (idempotent, similar checks to backup cron)
 CRON_DAILY="/opt/etc/cron.daily"
 LOGROTATE_DAILY="${CRON_DAILY}/logrotate"
 
 mkdir -p "${CRON_DAILY}"
-if [[ ! -f "${LOGROTATE_DAILY}" ]]; then
+if [[ -f "${LOGROTATE_DAILY}" ]] && grep -q "/opt/sbin/logrotate -s /opt/var/lib/logrotate.status /opt/etc/logrotate.conf" "${LOGROTATE_DAILY}"; then
+  echo "Leaving existing logrotate daily helper at ${LOGROTATE_DAILY} unchanged."
+else
   cat > "${LOGROTATE_DAILY}" <<'EOF'
 #!/bin/sh
 /opt/sbin/logrotate -s /opt/var/lib/logrotate.status /opt/etc/logrotate.conf
 EOF
-  echo "Created ${LOGROTATE_DAILY}"
   chmod +x "${LOGROTATE_DAILY}"
+  echo "Created logrotate daily helper at ${LOGROTATE_DAILY}"
 fi
 
 # Ensure backup is scheduled in cron.d (custom file /opt/etc/cron.d/backup, 05:00)
@@ -87,7 +89,7 @@ if [[ -f "${BACKUP_CRON_FILE}" ]]; then
   else
     echo "${BACKUP_CRON_LINE}" >> "${BACKUP_CRON_FILE}"
     CRONTAB_UPDATED=1
-    echo "Added backup schedule to ${BACKUP_CRON_FILE}: ${BACKUP_CRON_LINE}"
+    echo "Created backup schedule at ${BACKUP_CRON_FILE}: ${BACKUP_CRON_LINE}"
   fi
 else
   echo "${BACKUP_CRON_LINE}" > "${BACKUP_CRON_FILE}"

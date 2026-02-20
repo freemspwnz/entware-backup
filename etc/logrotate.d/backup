@@ -1,4 +1,4 @@
-# Backup log rotation (used when BACKUP_LOG_FILE=/opt/var/log/backup.log)
+# Backup log rotation
 # Copy to /opt/etc/logrotate.d/backup on the device.
 
 /opt/var/log/backup.log {

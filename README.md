@@ -39,7 +39,7 @@
 /opt/bin/bash install.sh
 ```
 
-Скрипт создаёт каталоги в `/opt/usr/local`, копирует `bin/backup.sh`, файлы из `lib/` и `lib/backup/`, пример конфига в `/opt/usr/local/etc/backup/backup.conf`, init.d-скрипт и конфиг logrotate. Также создаёт при необходимости задачу `/opt/etc/cron.daily/logrotate` и файл расписания бэкапа `/opt/etc/cron.d/backup` (запуск в 05:00). Существующие `backup.conf` и файл секретов не перезаписываются.
+Скрипт создаёт каталоги в `/opt/usr/local`, копирует `bin/backup.sh`, файлы из `lib/` и `lib/backup/`, пример конфига в `/opt/usr/local/etc/backup/backup.conf`, init.d-скрипт и конфиг logrotate. Также обеспечивает (идемпотентно) задачу `/opt/etc/cron.daily/logrotate` и файл расписания бэкапа `/opt/etc/cron.d/backup` (запуск в 05:00): если эти файлы уже существуют и содержат нужные команды, они не изменяются. Существующие `backup.conf` и файл секретов не перезаписываются.
 
 ---
 
@@ -108,6 +108,7 @@
 - «Сырой» вывод restic (backup/forget/check) **не** пишется в лог‑файл, чтобы не раздувать его размер.
 - При ошибке tail‑часть вывода restic (последние ~50 строк) добавляется в Telegram‑отчёт в блоке `<pre>…</pre>`.
 - Ротация файла `/opt/var/log/backup.log` настраивается через `logrotate` (файл `/opt/etc/logrotate.d/backup`).
+- Для ежедневного запуска `logrotate` устанавливается helper‑скрипт `/opt/etc/cron.daily/logrotate`. Если файл уже существует и в нём есть строка `/opt/sbin/logrotate -s /opt/var/lib/logrotate.status /opt/etc/logrotate.conf`, `install.sh` его не трогает; иначе перезаписывает каноничным содержимым и делает исполняемым.
 
 Просмотр логов: `cat /opt/var/log/backup.log` или через любой текстовый просмотрщик.
 
